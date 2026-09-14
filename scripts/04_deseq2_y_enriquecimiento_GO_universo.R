@@ -1,11 +1,7 @@
 #!/usr/bin/env Rscript
 
-# ============================================================================
-# TFM HER2-AUC: expresion diferencial con DESeq2 y enriquecimiento GO
-# Universo GO corregido: genes que superaron el prefiltrado de DESeq2
-# ============================================================================
-#
-# Este script reproduce y documenta la parte transcriptomica del TFM:
+# HER2-AUC: expresion diferencial con DESeq2 y enriquecimiento GO
+# Este script reproduce y documenta la parte transcriptomica:
 #   1. Recupera del master definitivo las 5 lineas de expresion baja de ERBB2
 #      y las 5 lineas de expresion alta de ERBB2.
 #   2. Selecciona sus conteos crudos de RNA-seq.
@@ -13,9 +9,6 @@
 #   4. Selecciona genes con FDR < 0,05.
 #   5. Ejecuta el analisis de sobrerrepresentacion de Gene Ontology (GO)
 #      por separado para BP, MF y CC.
-#
-# IMPORTANTE SOBRE EL UNIVERSO DE GO
-# ----------------------------------
 # enrichGO() utiliza explicitamente como universo los genes que superaron el
 # prefiltrado de DESeq2 (conteo >= 10 en al menos 2 de las 10 lineas). Los
 # identificadores ENTREZ se extraen directamente de los nombres de las columnas
@@ -27,10 +20,9 @@
 #
 # Salidas:
 #   results_dge/reproducible_final_universe_prefiltrado/
-#
-# Se utiliza una carpeta nueva para no sobrescribir el analisis GO anterior.
-# ============================================================================
 
+
+# Cargar librerias y paquetes
 suppressPackageStartupMessages({
   library(DESeq2)
   library(readr)
@@ -41,9 +33,7 @@ suppressPackageStartupMessages({
   library(org.Hs.eg.db)
 })
 
-# ----------------------------------------------------------------------------
 # 0. Configuracion
-# ----------------------------------------------------------------------------
 DEFAULT_TFM_DIR <-
   "/Users/estefanialejandracasallassamper/Desktop/TFM_UNIR/TFM_HER2_AUC"
 
@@ -92,9 +82,7 @@ FDR_CUTOFF <- 0.05
 # para evitar mezclar accidentalmente versiones de datos.
 STRICT_VALIDATION <- TRUE
 
-# ----------------------------------------------------------------------------
 # 1. Funciones auxiliares
-# ----------------------------------------------------------------------------
 require_file <- function(path) {
   if (!file.exists(path)) {
     stop("No se encontro el archivo requerido:\n", path, call. = FALSE)
@@ -210,9 +198,8 @@ extract_gene_denominator <- function(go_df) {
   as.integer(sub(".*/", "", go_df$GeneRatio[[1]]))
 }
 
-# ----------------------------------------------------------------------------
+
 # 2. Carga y validacion del master definitivo
-# ----------------------------------------------------------------------------
 require_file(MASTER_FILE)
 require_file(COUNTS_FILE)
 
@@ -287,9 +274,8 @@ write_csv(
   file.path(OUT_DIR, "lineas_incluidas_DESeq2.csv")
 )
 
-# ----------------------------------------------------------------------------
+
 # 3. Preparacion de la matriz de conteos crudos
-# ----------------------------------------------------------------------------
 counts <- read_csv(COUNTS_FILE, show_col_types = FALSE)
 counts <- standardize_id_column(counts, "matriz de conteos")
 counts <- filter_default_entries(counts)
@@ -384,9 +370,8 @@ if (!identical(colnames(count_matrix), rownames(meta2))) {
   stop("El orden de la matriz y los metadatos no coincide.", call. = FALSE)
 }
 
-# ----------------------------------------------------------------------------
+
 # 4. Expresion diferencial con DESeq2
-# ----------------------------------------------------------------------------
 dds <- DESeqDataSetFromMatrix(
   countData = count_matrix,
   colData = meta2,
@@ -445,9 +430,8 @@ write_csv(res_tbl, file.path(OUT_DIR, "DESeq2_resultados_completos.csv"))
 write_csv(sig_tbl, file.path(OUT_DIR, "DESeq2_genes_FDR_menor_0_05.csv"))
 write_csv(head(res_tbl, 20), file.path(OUT_DIR, "DESeq2_top20_por_FDR.csv"))
 
-# ----------------------------------------------------------------------------
+
 # 5. Identificadores para Gene Ontology
-# ----------------------------------------------------------------------------
 # Los ENTREZID se extraen directamente del formato "SIMBOLO (ENTREZID)".
 gene_map <- sig_tbl %>%
   transmute(
@@ -539,9 +523,8 @@ write_csv(
 message("Genes significativos para GO: ", length(entrez_significant))
 message("Genes unicos del universo GO: ", length(entrez_universe))
 
-# ----------------------------------------------------------------------------
+
 # 6. Enriquecimiento GO con universo explicito
-# ----------------------------------------------------------------------------
 run_enrich_go <- function(ontology) {
   enrichGO(
     gene = entrez_significant,
@@ -590,9 +573,8 @@ write_csv(
   file.path(OUT_DIR, "GO_Cellular_Component_enrichment.csv")
 )
 
-# ----------------------------------------------------------------------------
+
 # 7. Resumen y trazabilidad
-# ----------------------------------------------------------------------------
 summary_table <- tibble(
   metrica = c(
     "Lineas del master",
