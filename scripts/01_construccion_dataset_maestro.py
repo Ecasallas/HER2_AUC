@@ -1,39 +1,41 @@
 #!/usr/bin/env python3
 """Construye el conjunto de datos maestro ERBB2–AUC del TFM."""
 
-# Instalar paquetes necesarios
+# Cargar paquetes necesarios
 from math import isclose
 from pathlib import Path
+import os
 import pandas as pd
 
 
 # 0. Rutas del proyecto
-DIRECTORIO_PROYECTO = Path(__file__).resolve().parents[1]
+DIRECTORIO_PROYECTO = Path(os.environ.get("TFM_DIR", Path(__file__).resolve().parents[1])).expanduser().resolve()
+# Todas las salidas van a una copia de comprobación; el repositorio queda intacto.
+DIRECTORIO_SALIDAS = DIRECTORIO_PROYECTO / "comprobacion_reproducibilidad"
 
 ARCHIVO_AUC = (
     DIRECTORIO_PROYECTO
-    / "data_raw"
+    / "datos_originales"
     / "Drug_sensitivity_AUC_(PRISM_Repurposing_Secondary_Screen)_subsetted.csv"
 )
 ARCHIVO_EXPRESION = (
     DIRECTORIO_PROYECTO
-    / "data_raw"
+    / "datos_originales"
     / "Expression_Public_25Q3_subsetted.csv"
 )
 
 ARCHIVO_MAESTRO = (
-    DIRECTORIO_PROYECTO / "data_processed" / "master_her2_auc.csv"
+    DIRECTORIO_SALIDAS / "datos_procesados" / "master_her2_auc.csv"
 )
 TABLA_RESUMEN = (
-    DIRECTORIO_PROYECTO
-    / "results"
-    / "tables"
-    / "tabla_1_resumen_cohorte_TFM.csv"
+    DIRECTORIO_SALIDAS
+    / "tablas"
+    / "tabla_02_resumen_cohorte.csv"
 )
 VALIDACION_GRUPOS = (
-    DIRECTORIO_PROYECTO
-    / "results"
-    / "tables"
+    DIRECTORIO_SALIDAS
+    / "resultados"
+    / "control_calidad"
     / "validacion_grupos_HER2_por_linea.csv"
 )
 
@@ -197,6 +199,10 @@ def main() -> None:
         validate="many_to_one",
     )
     dataset_maestro = dataset_maestro.dropna(subset=["AUC", "ERBB2_expr"])
+    if not dataset_maestro[["AUC", "ERBB2_expr"]].map(
+        lambda x: float("-inf") < x < float("inf")
+    ).all().all():
+        raise ValueError("La integración contiene valores no finitos.")
 
     pares_duplicados = dataset_maestro.duplicated(
         ["depmap_id", "compound"], keep=False
