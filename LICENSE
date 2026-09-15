@@ -1,4 +1,10 @@
-MIT License
+## Licencia
+
+[![Code License: MIT](https://img.shields.io/badge/Code%20License-MIT-yellow.svg)](LICENSE)
+[![Docs License: CC BY-NC 4.0](https://img.shields.io/badge/Docs%20License-CC%20BY--NC%204.0-lightgrey.svg)](LICENSE-DOCS-CC-BY-NC-4.0)
+![Status](https://img.shields.io/badge/STATUS-EN%20DESARROLLO-green)
+
+### MIT License
 
 Copyright (c) 2026 Estefanía Alejandra Casallas Samper
 
@@ -20,13 +26,13 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
-Scope clarification
+### Scope clarification
 
 This MIT License applies exclusively to the original source code contained in
-the scripts/ directory.
+the `scripts/` directory.
 
-The datasets and derivative data files contained in datos_originales/,
-datos_procesados/, resultados/, tablas/, and figuras/ are not covered
+The datasets and derivative data files contained in `datos_originales/`,
+`datos_procesados/`, `resultados/`, `tablas/`, and `figuras/` are not covered
 by this MIT License. Third-party data obtained from DepMap, PRISM, and the Broad
 Institute remain subject to the terms of use, licenses, and attribution
 requirements established by their original providers.
