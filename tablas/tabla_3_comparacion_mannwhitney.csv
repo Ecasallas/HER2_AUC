@@ -1,0 +1,8 @@
+﻿Compuesto;Mecanismo de acción;n HER2-high;n HER2-low;Mediana AUC HER2-high;Mediana AUC HER2-low;Diferencia de medianas;p-valor;FDR (global);Criterio n>=3
+Canertinib;Inhibidor pan-HER/EGFR;5;5;0,8212;0,9506;-0,1293;0,0159;0,3823;Sí
+Dinaciclib;Inhibidor de CDK;4;5;0,7815;0,5544;0,2272;0,0159;0,3823;Sí
+Gefitinib;Inhibidor de EGFR;5;4;0,6752;0,9188;-0,2436;0,0159;0,3823;Sí
+Alpelisib;Inhibidor de PI3Kα;5;2;0,8213;0,9615;-0,1402;0,0952;;No
+Lapatinib;Inhibidor de HER2/EGFR;5;2;0,7938;0,9443;-0,1505;0,0952;;No
+Tucatinib;Inhibidor selectivo de HER2;5;5;0,6913;0,9067;-0,2154;0,0952;0,4245;Sí
+Poziotinib;Inhibidor de EGFR/HER2;3;3;0,3462;0,9328;-0,5866;0,1;0,4245;Sí
