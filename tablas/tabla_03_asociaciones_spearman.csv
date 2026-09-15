@@ -1,0 +1,11 @@
+﻿Compuesto;Mecanismo de acción;Líneas celulares;Rho de Spearman;p-valor;FDR
+Dinaciclib;Inhibidor de CDK;21;0,778;3,3e-05;0,029
+Alpelisib;Inhibidor de PI3Kα;15;-0,811;0,000246;0,069
+Velban;Inhibidor de microtúbulos;21;0,714;0,000275;0,069
+Emetina;Inhibidor de la síntesis proteica;20;0,723;0,000313;0,069
+Canertinib;Inhibidor pan-HER/EGFR;20;-0,707;0,000494;0,087
+Clonazepam;Modulador del receptor GABA-A;20;0,695;0,000675;0,091
+Poziotinib;Inhibidor de EGFR/HER2;13;-0,813;0,000724;0,091
+Ácido betulínico;Triterpenoide con actividad antitumoral;12;0,825;0,000951;0,097
+Lapatinib;Inhibidor de HER2/EGFR;18;-0,707;0,001037;0,097
+Tucatinib;Inhibidor selectivo de HER2;21;-0,66;0,001138;0,097
