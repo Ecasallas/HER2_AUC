@@ -1,0 +1,10 @@
+Ontología,Término GO,Proporción de genes (GeneRatio),FDR
+Procesos biológicos (BP),Organización de estructuras extracelulares,60/1533,0.0036
+Procesos biológicos (BP),Organización de la matriz extracelular,59/1533,0.0043
+Procesos biológicos (BP),Respuesta celular al estímulo del factor de crecimiento endotelial vascular,27/1533,0.01
+Funciones moleculares (MF),Componente estructural de la matriz extracelular,34/1587,0.0166
+Funciones moleculares (MF),Unión a integrinas,32/1587,0.0306
+Funciones moleculares (MF),Unión a factores de crecimiento,29/1587,0.0306
+Componentes celulares (CC),Matriz extracelular con colágeno,71/1628,0.000121
+Componentes celulares (CC),Unión célula-célula,84/1628,0.000424
+Componentes celulares (CC),Vesícula de transporte,70/1628,0.0019
