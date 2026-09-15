@@ -1,0 +1,23 @@
+depmap_id,cell_line_display_name,lineage_1,lineage_2,lineage_3,ERBB2_expr,HER2_group
+ACH-000721,HMC18,Breast,Invasive Breast Carcinoma,Breast Invasive Ductal Carcinoma,3.5059925243950385,HER2_low
+ACH-000573,MDAMB436,Breast,Invasive Breast Carcinoma,"Breast Invasive Carcinoma, NOS",3.871557840445523,HER2_low
+ACH-000288,BT549,Breast,Invasive Breast Carcinoma,"Breast Invasive Carcinoma, NOS",4.085560624872626,HER2_low
+ACH-000849,MDAMB468,Breast,Invasive Breast Carcinoma,Invasive Breast Carcinoma,4.546999379348131,HER2_low
+ACH-000212,CAL120,Breast,Invasive Breast Carcinoma,Invasive Breast Carcinoma,4.591308404185142,HER2_low
+ACH-000768,MDAMB231,Breast,Invasive Breast Carcinoma,Invasive Breast Carcinoma,4.596684735567345,HER2_mid
+ACH-000624,HCC1806,Breast,Breast Ductal Carcinoma In Situ,Breast Ductal Carcinoma In Situ,4.90433958030868,HER2_mid
+ACH-000374,HCC1143,Breast,Invasive Breast Carcinoma,Breast Invasive Ductal Carcinoma,5.127798338365821,HER2_mid
+ACH-000352,HCC1428,Breast,Invasive Breast Carcinoma,Invasive Breast Carcinoma,5.314957492109641,HER2_mid
+ACH-000019,MCF7,Breast,Invasive Breast Carcinoma,Invasive Breast Carcinoma,5.398114325909374,HER2_mid
+ACH-000643,HDQP1,Breast,Invasive Breast Carcinoma,Breast Invasive Ductal Carcinoma,5.40356427614107,HER2_mid
+ACH-000223,HCC1937,Breast,Invasive Breast Carcinoma,Breast Invasive Ductal Carcinoma,5.580531438155187,HER2_mid
+ACH-000783,CAMA1,Breast,Invasive Breast Carcinoma,Breast Invasive Lobular Carcinoma,6.0496373016547365,HER2_mid
+ACH-000856,CAL51,Breast,Invasive Breast Carcinoma,Invasive Breast Carcinoma,6.273094358271646,HER2_mid
+ACH-000147,T47D,Breast,Invasive Breast Carcinoma,Breast Invasive Ductal Carcinoma,6.285341180473159,HER2_mid
+ACH-000097,ZR751,Breast,Invasive Breast Carcinoma,Breast Invasive Ductal Carcinoma,6.766449400825998,HER2_mid
+ACH-000276,HCC38,Breast,Invasive Breast Carcinoma,Breast Invasive Ductal Carcinoma,7.114356612854375,HER2_mid
+ACH-000759,MDAMB175VII,Breast,Invasive Breast Carcinoma,Breast Invasive Ductal Carcinoma,7.454776342678837,HER2_high
+ACH-000711,JIMT1,Breast,Invasive Breast Carcinoma,Breast Invasive Ductal Carcinoma,8.432587832060696,HER2_high
+ACH-000927,BT474,Breast,Invasive Breast Carcinoma,Breast Invasive Ductal Carcinoma,10.471726012618872,HER2_high
+ACH-000117,EFM192A,Breast,Invasive Breast Carcinoma,Invasive Breast Carcinoma,11.393856978544296,HER2_high
+ACH-000277,HCC1419,Breast,Invasive Breast Carcinoma,Breast Invasive Ductal Carcinoma,11.642241271184114,HER2_high
