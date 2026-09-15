@@ -15,11 +15,11 @@
 # de la matriz de DepMap, que siguen el formato "SIMBOLO (ENTREZID)".
 #
 # Entradas esperadas (relativas a TFM_DIR):
-#   data_processed/master_her2_auc.csv
-#   data_raw/OmicsExpressionRawReadCountHumanProteinCodingGenes.csv
+#   datos_procesados/master_her2_auc.csv
+#   datos_originales/OmicsExpressionRawReadCountHumanProteinCodingGenes.csv.gz
 #
 # Salidas:
-#   results_dge/reproducible_final_universe_prefiltrado/
+#   resultados/expresion_diferencial/ y resultados/enriquecimiento_funcional/
 
 
 # Cargar librerias y paquetes
@@ -33,31 +33,31 @@ suppressPackageStartupMessages({
   library(org.Hs.eg.db)
 })
 
-# 0. Configuracion
-DEFAULT_TFM_DIR <-
-  "/Users/estefanialejandracasallassamper/Desktop/TFM_UNIR/TFM_HER2_AUC"
+# 0. Rutas portables. Ejecutar mediante Rscript; TFM_DIR es opcional.
+script_arg <- grep("^--file=", commandArgs(trailingOnly = FALSE), value = TRUE)
+if (!length(script_arg)) stop("Ejecute este archivo mediante Rscript.")
+script_path <- normalizePath(sub("^--file=", "", script_arg[[1]]), mustWork = TRUE)
+BASE_DIR <- normalizePath(Sys.getenv("TFM_DIR", unset = dirname(dirname(script_path))),
+                          mustWork = TRUE)
+SALIDAS_DIR <- file.path(BASE_DIR, "comprobacion_reproducibilidad")
+MASTER_FILE <- file.path(SALIDAS_DIR, "datos_procesados", "master_her2_auc.csv")
+COUNTS_FILE <- file.path(BASE_DIR, "datos_originales",
+                         "OmicsExpressionRawReadCountHumanProteinCodingGenes.csv.gz")
+if (!file.exists(COUNTS_FILE)) COUNTS_FILE <- sub("\\.gz$", "", COUNTS_FILE)
+DGE_DIR <- file.path(SALIDAS_DIR, "resultados", "expresion_diferencial")
+GO_DIR <- file.path(SALIDAS_DIR, "resultados", "enriquecimiento_funcional")
+APOYO_DIR <- file.path(SALIDAS_DIR, "resultados", "tablas_apoyo")
+CONTROL_DIR <- file.path(SALIDAS_DIR, "resultados", "control_calidad")
+TABLAS_DIR <- file.path(SALIDAS_DIR, "tablas")
+for (folder in c(DGE_DIR, GO_DIR, APOYO_DIR, CONTROL_DIR, TABLAS_DIR)) {
+  dir.create(folder, showWarnings = FALSE, recursive = TRUE)
+}
+# El marcador se escribe solo al concluir todas las salidas. Un fallo deja el
+# análisis sin certificar y el script 05 no mezcla resultados de dos ejecuciones.
+PROVENANCE_FILE <- file.path(CONTROL_DIR, "procedencia_DESeq2_GO.rds")
+if (file.exists(PROVENANCE_FILE)) unlink(PROVENANCE_FILE)
 
-BASE_DIR <- Sys.getenv("TFM_DIR", unset = DEFAULT_TFM_DIR)
-
-MASTER_FILE <- file.path(
-  BASE_DIR,
-  "data_processed",
-  "master_her2_auc.csv"
-)
-
-COUNTS_FILE <- file.path(
-  BASE_DIR,
-  "data_raw",
-  "OmicsExpressionRawReadCountHumanProteinCodingGenes.csv"
-)
-
-OUT_DIR <- file.path(
-  BASE_DIR,
-  "results_dge",
-  "reproducible_final_universe_prefiltrado"
-)
-
-dir.create(OUT_DIR, showWarnings = FALSE, recursive = TRUE)
+capture.output(sessionInfo(), file = file.path(CONTROL_DIR, "sessionInfo_R.txt"))
 
 # Estas expectativas corresponden a resultados que no deben cambiar al
 # corregir el universo de GO. Los numeros de terminos GO no se fijan porque
@@ -225,7 +225,7 @@ line_table <- master %>%
   distinct()
 
 conflicting_lines <- line_table %>%
-  count(depmap_id) %>%
+  dplyr::count(depmap_id) %>%
   filter(n != 1L)
 
 if (nrow(conflicting_lines) > 0L) {
@@ -246,6 +246,12 @@ p80 <- quantile(line_table$ERBB2_expr, 0.80, names = FALSE)
 
 check_expected(p20, EXPECTED$p20, "Percentil 20", tolerance = 1e-10)
 check_expected(p80, EXPECTED$p80, "Percentil 80", tolerance = 1e-10)
+
+expected_groups <- ifelse(line_table$ERBB2_expr <= p20, "HER2_low",
+                          ifelse(line_table$ERBB2_expr >= p80, "HER2_high", "HER2_mid"))
+if (any(line_table$HER2_group != expected_groups)) {
+  stop("Las etiquetas del maestro no coinciden con los percentiles 20/80.")
+}
 
 meta <- line_table %>%
   filter(HER2_group %in% c("HER2_low", "HER2_high")) %>%
@@ -271,7 +277,7 @@ check_expected(
 
 write_csv(
   meta %>% mutate(HER2_group = as.character(HER2_group)),
-  file.path(OUT_DIR, "lineas_incluidas_DESeq2.csv")
+  file.path(APOYO_DIR, "lineas_incluidas_DESeq2.csv")
 )
 
 
@@ -379,7 +385,7 @@ dds <- DESeqDataSetFromMatrix(
 )
 
 # Prefiltrado: conteo >= 10 en al menos 2 de las 10 lineas celulares.
-keep_genes <- rowSums(counts(dds) >= MIN_COUNT) >= MIN_SAMPLES
+keep_genes <- rowSums(DESeq2::counts(dds) >= MIN_COUNT) >= MIN_SAMPLES
 dds <- dds[keep_genes, ]
 
 check_expected(
@@ -388,11 +394,11 @@ check_expected(
   "Genes conservados despues del prefiltrado"
 )
 
-dds <- DESeq(dds)
+dds <- DESeq(dds, parallel = FALSE)
 
 # HER2_low es la referencia. Un log2 fold change positivo indica mayor
 # expresion en el grupo de expresion alta de ERBB2.
-res <- results(
+res <- DESeq2::results(
   dds,
   contrast = c("HER2_group", "HER2_high", "HER2_low"),
   alpha = FDR_CUTOFF,
@@ -426,9 +432,9 @@ check_expected(
   "Genes con cambio negativo"
 )
 
-write_csv(res_tbl, file.path(OUT_DIR, "DESeq2_resultados_completos.csv"))
-write_csv(sig_tbl, file.path(OUT_DIR, "DESeq2_genes_FDR_menor_0_05.csv"))
-write_csv(head(res_tbl, 20), file.path(OUT_DIR, "DESeq2_top20_por_FDR.csv"))
+write_csv(res_tbl, file.path(DGE_DIR, "deseq2_HER2_high_vs_low_resultados_prefiltrado.csv"))
+write_csv(sig_tbl, file.path(DGE_DIR, "deseq2_genes_FDR_menor_0_05.csv"))
+write_csv(head(res_tbl, 20), file.path(TABLAS_DIR, "tabla_05_top20_genes_DESeq2.csv"))
 
 
 # 5. Identificadores para Gene Ontology
@@ -471,7 +477,7 @@ entrez_significant <- unique(gene_map$ENTREZID)
 
 write_csv(
   gene_map,
-  file.path(OUT_DIR, "genes_significativos_convertidos_ENTREZID.csv")
+  file.path(DGE_DIR, "genes_ENTREZID.csv")
 )
 
 # Universo: todos los genes que superaron el prefiltrado de DESeq2, no solo
@@ -517,7 +523,7 @@ if (length(missing_from_universe) > 0L) {
 
 write_csv(
   universe_map,
-  file.path(OUT_DIR, "universo_GO_genes_prefiltrados.csv")
+  file.path(APOYO_DIR, "universo_GO_genes_prefiltrados.csv")
 )
 
 message("Genes significativos para GO: ", length(entrez_significant))
@@ -533,8 +539,11 @@ run_enrich_go <- function(ontology) {
     keyType = "ENTREZID",
     ont = ontology,
     pAdjustMethod = "BH",
+    # Parámetros exactos de la metodología depositada, página 36.
     pvalueCutoff = FDR_CUTOFF,
     qvalueCutoff = FDR_CUTOFF,
+    minGSSize = 10,
+    maxGSSize = 500,
     readable = TRUE
   )
 }
@@ -543,13 +552,67 @@ go_bp <- run_enrich_go("BP")
 go_mf <- run_enrich_go("MF")
 go_cc <- run_enrich_go("CC")
 
-go_bp_df <- as.data.frame(go_bp)
-go_mf_df <- as.data.frame(go_mf)
-go_cc_df <- as.data.frame(go_cc)
+normalizar_go <- function(object, ont) {
+  if (is.null(object)) {
+    stop("enrichGO devolvió NULL para ", ont,
+         ". Compruebe el mapeo ENTREZ y las anotaciones; no es un resultado vacío válido.")
+  }
+  df <- as.data.frame(object)
+  # Asegurar cabeceras incluso cuando no hay conjuntos evaluables.
+  if (!nrow(df) && !all(c("ID", "p.adjust") %in% names(df))) {
+    df <- data.frame(ID = character(), Description = character(),
+                     GeneRatio = character(), BgRatio = character(),
+                     pvalue = numeric(), p.adjust = numeric(), qvalue = numeric(),
+                     geneID = character(), Count = integer())
+  }
+  if (nrow(df)) {
+    denominators <- as.integer(sub(".*/", "", df$BgRatio))
+    if (anyNA(denominators) || any(denominators > length(entrez_universe))) {
+      stop("Fondo efectivo de GO incompatible con el universo prefiltrado: ", ont)
+    }
+  }
+  df %>% filter(!is.na(p.adjust), p.adjust < FDR_CUTOFF, !is.na(qvalue), qvalue < FDR_CUTOFF) %>% arrange(p.adjust, pvalue, ID)
+}
+go_bp_df <- normalizar_go(go_bp, "BP")
+go_mf_df <- normalizar_go(go_mf, "MF")
+go_cc_df <- normalizar_go(go_cc, "CC")
 
-# Los conteos GO pueden diferir de los 254/41/34 del analisis anterior porque
-# ahora se utiliza el universo de genes prefiltrados. Se informan los valores
-# observados sin imponer una validacion contra los numeros antiguos.
+# Referencia: TFM depositado, páginas 36 y 49–54. Se comparan valores calculados,
+# sin sustituirlos por valores esperados. Si difieren, no se certifican las salidas.
+validacion_go <- tibble(
+  Ontologia = c("BP", "MF", "CC"),
+  Terminos_observados = c(nrow(go_bp_df), nrow(go_mf_df), nrow(go_cc_df)),
+  Terminos_TFM = c(44L, 4L, 14L),
+  Fondo_observado = c(extract_bg_denominator(go_bp_df), extract_bg_denominator(go_mf_df), extract_bg_denominator(go_cc_df)),
+  Fondo_TFM = c(14276L, 14829L, 15050L),
+  Entrada_observada = c(extract_gene_denominator(go_bp_df), extract_gene_denominator(go_mf_df), extract_gene_denominator(go_cc_df)),
+  Entrada_TFM = c(1533L, 1587L, 1628L)
+)
+write_csv(validacion_go, file.path(CONTROL_DIR, "concordancia_GO_con_TFM.csv"))
+if (anyNA(validacion_go) || any(validacion_go$Terminos_observados != validacion_go$Terminos_TFM) ||
+    any(validacion_go$Fondo_observado != validacion_go$Fondo_TFM) ||
+    any(validacion_go$Entrada_observada != validacion_go$Entrada_TFM)) {
+  stop("La reproducción GO difiere del TFM. Revise concordancia_GO_con_TFM.csv y las versiones del sessionInfo original. No se modificarán los resultados depositados.")
+}
+
+# Los valores siguientes son referencias para COMPARAR, nunca se exportan como resultados calculados.
+reference_terms <- tibble(
+  ont = c(rep("BP", 3), rep("MF", 3), rep("CC", 3)),
+  ID = c("GO:0043062", "GO:0030198", "GO:0035924", "GO:0005201", "GO:0005178", "GO:0019838", "GO:0062023", "GO:0005911", "GO:0030133"),
+  ratio_TFM = c("60/1533", "59/1533", "27/1533", "34/1587", "32/1587", "29/1587", "71/1628", "84/1628", "70/1628"),
+  FDR_TFM = c(0.0036, 0.0043, 0.0100, 0.0166, 0.0306, 0.0306, 0.000121, 0.000424, 0.0019),
+  tolerancia = c(rep(0.00005001, 6), 0.0000005001, 0.0000005001, 0.00005001)
+)
+observed_terms <- bind_rows(list(BP = go_bp_df, MF = go_mf_df, CC = go_cc_df), .id = "ont") %>%
+  dplyr::select(ont, ID, GeneRatio, p.adjust)
+comparison <- left_join(reference_terms, observed_terms, by = c("ont", "ID")) %>%
+  mutate(coincide = !is.na(p.adjust) & !is.na(GeneRatio) & GeneRatio == ratio_TFM &
+           abs(p.adjust - FDR_TFM) <= tolerancia)
+write_csv(comparison, file.path(CONTROL_DIR, "concordancia_tabla_06_con_TFM.csv"))
+if (!all(comparison$coincide)) {
+  stop("La tabla 6 no se reproduce con la precisión del TFM. Consulte las versiones originales; los resultados depositados quedan intactos.")
+}
+
 if (nrow(go_bp_df) == 0L) {
   warning("No se obtuvieron terminos GO significativos para BP.", call. = FALSE)
 }
@@ -562,15 +625,15 @@ if (nrow(go_cc_df) == 0L) {
 
 write_csv(
   go_bp_df,
-  file.path(OUT_DIR, "GO_Biological_Process_enrichment.csv")
+  file.path(GO_DIR, "GO_proceso_biologico.csv")
 )
 write_csv(
   go_mf_df,
-  file.path(OUT_DIR, "GO_Molecular_Function_enrichment.csv")
+  file.path(GO_DIR, "GO_funcion_molecular.csv")
 )
 write_csv(
   go_cc_df,
-  file.path(OUT_DIR, "GO_Cellular_Component_enrichment.csv")
+  file.path(GO_DIR, "GO_componente_celular.csv")
 )
 
 
@@ -622,11 +685,11 @@ summary_table <- tibble(
   )
 )
 
-write_csv(summary_table, file.path(OUT_DIR, "resumen_validacion.csv"))
+write_csv(summary_table, file.path(CONTROL_DIR, "resumen_validacion_DESeq2_GO.csv"))
 
 capture.output(
   sessionInfo(),
-  file = file.path(OUT_DIR, "sessionInfo.txt")
+  file = file.path(CONTROL_DIR, "sessionInfo_R.txt")
 )
 
 cat("\nAnalisis completado con universo GO explicito.\n")
@@ -639,4 +702,27 @@ cat("- Genes unicos del universo GO:", length(entrez_universe), "\n")
 cat("- Terminos GO BP:", nrow(go_bp_df), "\n")
 cat("- Terminos GO MF:", nrow(go_mf_df), "\n")
 cat("- Terminos GO CC:", nrow(go_cc_df), "\n")
-cat("- Salidas guardadas en:", OUT_DIR, "\n")
+cat("- Salidas guardadas en:", DGE_DIR, "y", GO_DIR, "\n")
+
+# Huellas de entradas/salidas para que el script de figuras compruebe procedencia.
+outputs <- c(
+  file.path(DGE_DIR, "deseq2_HER2_high_vs_low_resultados_prefiltrado.csv"),
+  file.path(GO_DIR, c("GO_proceso_biologico.csv", "GO_funcion_molecular.csv",
+                      "GO_componente_celular.csv")),
+  file.path(APOYO_DIR, "universo_GO_genes_prefiltrados.csv")
+)
+relative_outputs <- substring(outputs, nchar(SALIDAS_DIR) + 2L)
+provenance <- list(
+  fecha_UTC = format(Sys.time(), tz = "UTC", usetz = TRUE),
+  entradas = data.frame(archivo = c(basename(MASTER_FILE), basename(COUNTS_FILE)),
+                        md5 = unname(tools::md5sum(c(MASTER_FILE, COUNTS_FILE)))),
+  archivos = relative_outputs,
+  md5 = unname(tools::md5sum(outputs)),
+  universo = "genes que superaron conteo >= 10 en >= 2 muestras",
+  n_universo = length(entrez_universe),
+  criterio_GO = "p.adjust BH < 0.05 y qvalue < 0.05 por ontologia; minGSSize=10; maxGSSize=500",
+  versiones = vapply(c("DESeq2", "clusterProfiler", "org.Hs.eg.db"),
+                     function(p) as.character(packageVersion(p)), character(1))
+)
+saveRDS(provenance, PROVENANCE_FILE)
+capture.output(str(provenance), file = file.path(CONTROL_DIR, "procedencia_DESeq2_GO.txt"))
