@@ -1,6 +1,6 @@
 # HER2_AUC
 
-![Status](https://img.shields.io/badge/STATUS-EN%20DESARROLLO-green)
+![Status](https://img.shields.io/badge/STATUS-COMPLETO-green)
 [![Code License: MIT](https://img.shields.io/badge/Code%20License-MIT-yellow.svg)](LICENSE)
 [![Docs License: CC BY-NC 4.0](https://img.shields.io/badge/Docs%20License-CC%20BY--NC%204.0-lightgrey.svg)](LICENSE-DOCS-CC-BY-NC-4.0)
 
