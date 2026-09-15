@@ -1,5 +1,9 @@
 # HER2_AUC
 
+![Status](https://img.shields.io/badge/STATUS-EN%20DESARROLLO-green)
+[![Code License: MIT](https://img.shields.io/badge/Code%20License-MIT-yellow.svg)](LICENSE)
+[![Docs License: CC BY-NC 4.0](https://img.shields.io/badge/Docs%20License-CC%20BY--NC%204.0-lightgrey.svg)](LICENSE-DOCS-CC-BY-NC-4.0)
+
 Análisis farmacogenómico de la expresión de ERBB2 y la respuesta a fármacos en líneas celulares de cáncer de mama mediante datos públicos de DepMap y PRISM.
 
 Este repositorio contiene los datos utilizados, los scripts, los resultados, las tablas y las figuras generadas para el Trabajo Fin de Máster:
