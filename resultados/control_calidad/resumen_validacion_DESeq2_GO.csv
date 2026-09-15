@@ -1,0 +1,21 @@
+metrica,valor
+Lineas del master,22
+Lineas de expresion baja,5
+Lineas de expresion alta,5
+Percentil 20,4.592383670461582
+Percentil 80,7.386692396713945
+Genes despues del prefiltrado,15774
+"Genes con FDR < 0,05",1708
+Genes con cambio positivo,893
+Genes con cambio negativo,815
+Genes significativos con ENTREZID,1708
+Genes unicos del universo GO,15774
+Terminos GO BP,44
+Terminos GO MF,4
+Terminos GO CC,14
+Fondo efectivo GO BP,14276
+Fondo efectivo GO MF,14829
+Fondo efectivo GO CC,15050
+Genes de entrada anotados en BP,1533
+Genes de entrada anotados en MF,1587
+Genes de entrada anotados en CC,1628
