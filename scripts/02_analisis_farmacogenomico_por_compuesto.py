@@ -6,6 +6,7 @@ y las tablas empleadas en el documento."""
 # Cargar librerias y paquetes
 from math import isclose
 from pathlib import Path
+import os
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -16,15 +17,21 @@ from statsmodels.stats.multitest import multipletests
 
 
 # 0. Rutas y parámetros
-DIRECTORIO_PROYECTO = Path(__file__).resolve().parents[1]
+DIRECTORIO_PROYECTO = Path(os.environ.get("TFM_DIR", Path(__file__).resolve().parents[1])).expanduser().resolve()
+# Todas las salidas van a una copia de comprobación; el repositorio queda intacto.
+DIRECTORIO_SALIDAS = DIRECTORIO_PROYECTO / "comprobacion_reproducibilidad"
 ARCHIVO_MAESTRO = (
-    DIRECTORIO_PROYECTO / "data_processed" / "master_her2_auc.csv"
+    DIRECTORIO_SALIDAS / "datos_procesados" / "master_her2_auc.csv"
 )
 DIRECTORIO_TABLAS = (
-    DIRECTORIO_PROYECTO / "results" / "tables" / "tables_compuesto"
+    DIRECTORIO_SALIDAS / "resultados" / "farmacogenomica"
 )
+DIRECTORIO_APOYO = DIRECTORIO_SALIDAS / "resultados" / "tablas_apoyo"
+DIRECTORIO_CONTROL = DIRECTORIO_SALIDAS / "resultados" / "control_calidad"
+DIRECTORIO_TABLAS_TFM = DIRECTORIO_SALIDAS / "tablas"
+
 DIRECTORIO_FIGURAS = (
-    DIRECTORIO_PROYECTO / "results" / "figures" / "figures_comp"
+    DIRECTORIO_SALIDAS / "figuras" / "complementarias"
 )
 
 MINIMO_SPEARMAN = 10
@@ -35,7 +42,7 @@ VALORES_ESPERADOS = {
     "compuestos": 1383,
     "observaciones": 17253,
     "spearman_evaluados": 883,
-    "mannwhitney_evaluados": 343,
+    "mannwhitney_evaluados": 572,
     "spearman_fdr_005": 1,
     "mannwhitney_fdr_005": 0,
 }
@@ -96,15 +103,10 @@ def etiqueta_grupo_her2(valor: str) -> str:
 
 
 def guardar_tabla_tfm(tabla: pd.DataFrame, ruta_base: Path) -> None:
-    """Guarda una tabla en XLSX y en CSV compatible con Excel y Numbers."""
-    tabla.to_excel(ruta_base.with_suffix(".xlsx"), index=False)
-    tabla.to_csv(
-        ruta_base.with_suffix(".csv"),
-        index=False,
-        sep=";",
-        decimal=",",
-        encoding="utf-8-sig",
-    )
+    """Guarda CSV con punto y coma y coma decimal para Excel/Numbers."""
+    ruta_base.parent.mkdir(parents=True, exist_ok=True)
+    tabla.to_csv(ruta_base.with_suffix(".csv"), index=False,
+                 sep=";", decimal=",", encoding="utf-8-sig")
 
 
 def validar_dataset_maestro(datos: pd.DataFrame) -> None:
@@ -139,6 +141,11 @@ def validar_dataset_maestro(datos: pd.DataFrame) -> None:
     if duplicados:
         errores.append(f"pares línea–compuesto duplicados: {duplicados}")
 
+    if not np.isfinite(datos[["AUC", "ERBB2_expr"]].to_numpy()).all():
+        errores.append("valores no finitos en AUC o ERBB2")
+    asignaciones = datos[["depmap_id", "ERBB2_expr", "HER2_group"]].drop_duplicates()
+    if asignaciones["depmap_id"].duplicated().any():
+        errores.append("una línea tiene múltiples expresiones o grupos")
     lineas = datos[
         ["depmap_id", "ERBB2_expr", "HER2_group"]
     ].drop_duplicates(subset="depmap_id")
@@ -156,6 +163,10 @@ def validar_dataset_maestro(datos: pd.DataFrame) -> None:
     if not isclose(p80, 7.386692396713945, abs_tol=1e-10):
         errores.append(f"P80 inesperado: {p80}")
 
+    grupos_calculados = np.where(lineas["ERBB2_expr"] <= p20, "HER2_low",
+                                 np.where(lineas["ERBB2_expr"] >= p80, "HER2_high", "HER2_mid"))
+    if not np.array_equal(grupos_calculados, lineas["HER2_group"].to_numpy()):
+        errores.append("grupos incompatibles con los percentiles")
     if errores:
         raise RuntimeError(
             "El archivo no coincide con el dataset maestro definitivo:\n- "
@@ -230,6 +241,7 @@ def calcular_mannwhitney(
             grupo_high,
             grupo_low,
             alternative="two-sided",
+            method="auto",
         )
 
         resultados.append(
@@ -397,7 +409,7 @@ def crear_figura_compuestos(datos_extremos: pd.DataFrame) -> None:
     )
 
     figura.tight_layout()
-    ruta_base = DIRECTORIO_FIGURAS / "figura_05_compuestos_interes_HER2"
+    ruta_base = DIRECTORIO_FIGURAS / "comparacion_compuestos_interes_HER2"
     figura.savefig(ruta_base.with_suffix(".png"), dpi=300, bbox_inches="tight")
     figura.savefig(ruta_base.with_suffix(".pdf"), bbox_inches="tight")
     plt.close(figura)
@@ -411,10 +423,12 @@ def main() -> None:
             f"No se encontró el dataset maestro requerido:\n{ARCHIVO_MAESTRO}"
         )
 
-    DIRECTORIO_TABLAS.mkdir(parents=True, exist_ok=True)
+    for carpeta in (DIRECTORIO_TABLAS, DIRECTORIO_APOYO, DIRECTORIO_CONTROL, DIRECTORIO_TABLAS_TFM):
+        carpeta.mkdir(parents=True, exist_ok=True)
     DIRECTORIO_FIGURAS.mkdir(parents=True, exist_ok=True)
 
     datos = pd.read_csv(ARCHIVO_MAESTRO, low_memory=False)
+    validar_dataset_maestro(datos)
     datos["ERBB2_expr"] = pd.to_numeric(datos["ERBB2_expr"], errors="coerce")
     datos["AUC"] = pd.to_numeric(datos["AUC"], errors="coerce")
     datos = datos.dropna(
@@ -427,8 +441,11 @@ def main() -> None:
 
     # Correlaciones de Spearman por compuesto.
     spearman_completo = calcular_spearman(datos)
+    datos_extremos = datos.loc[datos["HER2_group"].isin(["HER2_high", "HER2_low"])].copy()
+    mw_completo = calcular_mannwhitney(datos_extremos, aplicar_minimo=True)
+    validar_resultados(spearman_completo, mw_completo)
     spearman_completo.to_csv(
-        DIRECTORIO_TABLAS / "spearman_por_compuesto_completo.csv",
+        DIRECTORIO_TABLAS / "spearman_por_compuesto.csv",
         index=False,
     )
 
@@ -456,17 +473,12 @@ def main() -> None:
     tabla_2["FDR"] = tabla_2["FDR"].round(3)
     guardar_tabla_tfm(
         tabla_2,
-        DIRECTORIO_TABLAS / "tabla_2_principales_asociaciones_spearman_TFM",
+        DIRECTORIO_TABLAS_TFM / "tabla_03_asociaciones_spearman",
     )
 
-    # Mann–Whitney principal: solamente compuestos con n >= 3 por grupo.
-    datos_extremos = datos.loc[
-        datos["HER2_group"].isin(["HER2_high", "HER2_low"])
-    ].copy()
-    mw_completo = calcular_mannwhitney(datos_extremos, aplicar_minimo=True)
-    validar_resultados(spearman_completo, mw_completo)
+    # Mann–Whitney principal calculado y validado antes de exportar.
     mw_completo.to_csv(
-        DIRECTORIO_TABLAS / "mannwhitney_por_compuesto_completo.csv",
+        DIRECTORIO_TABLAS / "mannwhitney_por_compuesto.csv",
         index=False,
     )
 
@@ -480,13 +492,13 @@ def main() -> None:
     mw_interes = calcular_mannwhitney(datos_interes, aplicar_minimo=False)
     mw_interes = mw_interes.drop(columns="FDR")
     mw_interes = mw_interes.merge(
-        mw_completo[["Compuesto", "FDR"]],
-        on="Compuesto",
+        mw_completo[["Compuesto completo", "FDR"]],
+        on="Compuesto completo",
         how="left",
         validate="one_to_one",
     ).rename(columns={"FDR": "FDR (global)"})
     mw_interes.to_csv(
-        DIRECTORIO_TABLAS / "mannwhitney_compuestos_interes_exploratorio.csv",
+        DIRECTORIO_APOYO / "mannwhitney_compuestos_interes_exploratorio.csv",
         index=False,
     )
 
@@ -523,7 +535,7 @@ def main() -> None:
     tabla_3[columnas_redondear] = tabla_3[columnas_redondear].round(4)
     guardar_tabla_tfm(
         tabla_3,
-        DIRECTORIO_TABLAS / "tabla_3_comparacion_mannwhitney_TFM",
+        DIRECTORIO_TABLAS_TFM / "tabla_04_comparacion_mannwhitney",
     )
 
     diagnostico_mw = pd.DataFrame(
@@ -547,7 +559,7 @@ def main() -> None:
         }
     )
     diagnostico_mw.to_csv(
-        DIRECTORIO_TABLAS / "diagnostico_pvalores_FDR_mannwhitney.csv",
+        DIRECTORIO_CONTROL / "diagnostico_pvalores_FDR_mannwhitney.csv",
         index=False,
     )
 
@@ -563,7 +575,7 @@ def main() -> None:
         MECANISMOS_ACCION
     )
     tabla_integrada.to_csv(
-        DIRECTORIO_TABLAS / "resultados_integrados_por_compuesto_completo.csv",
+        DIRECTORIO_TABLAS / "resultados_integrados_por_compuesto.csv",
         index=False,
     )
 
@@ -592,7 +604,7 @@ def main() -> None:
     for columna in tabla_biologica.select_dtypes(include="number").columns:
         tabla_biologica[columna] = tabla_biologica[columna].round(4)
     tabla_biologica.to_csv(
-        DIRECTORIO_TABLAS / "tabla_apoyo_interpretacion_biologica.csv",
+        DIRECTORIO_APOYO / "tabla_apoyo_interpretacion_biologica.csv",
         index=False,
     )
 
