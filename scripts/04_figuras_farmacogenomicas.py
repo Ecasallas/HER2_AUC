@@ -4,22 +4,23 @@
 El script debe guardarse dentro de la carpeta ``scripts`` del repositorio.
 
 Entradas:
-    data_processed/master_her2_auc.csv
-    results/tables/tables_compuesto/spearman_por_compuesto_completo.csv
-    results/tables/tables_compuesto/mannwhitney_por_compuesto_completo.csv
+    datos_procesados/master_her2_auc.csv
+    resultados/farmacogenomica/spearman_por_compuesto.csv
+    resultados/farmacogenomica/mannwhitney_por_compuesto.csv
 
 Salidas:
-    results/figures/figures_corrected/
+    figuras/
 
 Figuras generadas:
-    Figura 2: distribución de ERBB2 y percentiles 20/80.
-    Figura 3: relación entre ERBB2 y AUC de Dinaciclib.
-    Figura 4: AUC de Dinaciclib en los grupos ERBB2-high y ERBB2-low.
+    Figura 5: distribución de ERBB2 y percentiles 20/80.
+    Figura 6: relación entre ERBB2 y AUC de Dinaciclib.
+    Figura 7: AUC de Dinaciclib en los grupos ERBB2-high y ERBB2-low.
 """
 
 from __future__ import annotations
 
 from pathlib import Path
+import os
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -31,20 +32,22 @@ from scipy import stats
 # -----------------------------------------------------------------------------
 # 0. Rutas del proyecto
 # -----------------------------------------------------------------------------
-DIRECTORIO_PROYECTO = Path(__file__).resolve().parents[1]
+DIRECTORIO_PROYECTO = Path(os.environ.get("TFM_DIR", Path(__file__).resolve().parents[1])).expanduser().resolve()
+# Todas las salidas van a una copia de comprobación; el repositorio queda intacto.
+DIRECTORIO_SALIDAS = DIRECTORIO_PROYECTO / "comprobacion_reproducibilidad"
 
 ARCHIVO_MAESTRO = (
-    DIRECTORIO_PROYECTO / "data_processed" / "master_her2_auc.csv"
+    DIRECTORIO_SALIDAS / "datos_procesados" / "master_her2_auc.csv"
 )
 DIRECTORIO_TABLAS = (
-    DIRECTORIO_PROYECTO / "results" / "tables" / "tables_compuesto"
+    DIRECTORIO_SALIDAS / "resultados" / "farmacogenomica"
 )
-ARCHIVO_SPEARMAN = DIRECTORIO_TABLAS / "spearman_por_compuesto_completo.csv"
+ARCHIVO_SPEARMAN = DIRECTORIO_TABLAS / "spearman_por_compuesto.csv"
 ARCHIVO_MANNWHITNEY = (
-    DIRECTORIO_TABLAS / "mannwhitney_por_compuesto_completo.csv"
+    DIRECTORIO_TABLAS / "mannwhitney_por_compuesto.csv"
 )
 DIRECTORIO_FIGURAS = (
-    DIRECTORIO_PROYECTO / "results" / "figures" / "figures_corrected"
+    DIRECTORIO_SALIDAS / "figuras"
 )
 
 VALORES_ESPERADOS = {
@@ -149,6 +152,10 @@ def validar_dataset_maestro(
             + ", ".join(columnas_faltantes)
         )
 
+    if datos[list(columnas_necesarias)].isna().any().any():
+        raise ValueError("El maestro contiene valores ausentes.")
+    if not np.isfinite(datos[["AUC", "ERBB2_expr"]].to_numpy()).all():
+        raise ValueError("AUC o ERBB2 contienen valores no finitos.")
     duplicados = datos.duplicated(["depmap_id", "compound"]).sum()
     if duplicados:
         raise ValueError(
@@ -200,6 +207,10 @@ def validar_dataset_maestro(
             f"grupos={grupos}; valor esperado={VALORES_ESPERADOS['grupos']}"
         )
 
+    grupos_calculados = np.where(lineas["ERBB2_expr"] <= p20, "HER2_low",
+                                 np.where(lineas["ERBB2_expr"] >= p80, "HER2_high", "HER2_mid"))
+    if not np.array_equal(grupos_calculados, lineas["HER2_group"].to_numpy()):
+        problemas.append("grupos incompatibles con los percentiles")
     if problemas:
         raise RuntimeError(
             "El archivo no coincide con el dataset maestro definitivo:\n- "
@@ -294,7 +305,7 @@ def crear_distribucion_erbb2(
     p20: float,
     p80: float,
 ) -> None:
-    """Genera la figura 2: distribución de ERBB2 y grupos extremos."""
+    """Genera la figura 5: distribución de ERBB2 y grupos extremos."""
     datos_figura = lineas.copy()
     etiquetas = {
         "HER2_low": "≤ P20: expresión baja (n = 5)",
@@ -355,7 +366,7 @@ def crear_distribucion_erbb2(
     figura.tight_layout()
     guardar_figura(
         figura,
-        "figura_02_distribucion_ERBB2_percentiles_FINAL",
+        "figura_05_distribucion_ERBB2_percentiles",
     )
 
 
@@ -363,7 +374,7 @@ def crear_scatter_dinaciclib(
     datos_dinaciclib: pd.DataFrame,
     fila_spearman: pd.Series,
 ) -> None:
-    """Genera la figura 3: relación entre ERBB2 y AUC de Dinaciclib."""
+    """Genera la figura 6: relación entre ERBB2 y AUC de Dinaciclib."""
     rho = float(fila_spearman["Rho de Spearman"])
     p_valor = float(fila_spearman["p-valor"])
     fdr = float(fila_spearman["FDR"])
@@ -418,14 +429,14 @@ def crear_scatter_dinaciclib(
     eje.grid(alpha=0.18)
     añadir_marco(eje)
     figura.tight_layout()
-    guardar_figura(figura, "figura_03_scatter_ERBB2_Dinaciclib")
+    guardar_figura(figura, "figura_06_scatter_ERBB2_Dinaciclib")
 
 
 def crear_boxplot_dinaciclib(
     datos_dinaciclib: pd.DataFrame,
     fila_mw: pd.Series,
 ) -> None:
-    """Genera la figura 4: AUC de Dinaciclib en los grupos extremos."""
+    """Genera la figura 7: AUC de Dinaciclib en los grupos extremos."""
     extremos = datos_dinaciclib.loc[
         datos_dinaciclib["HER2_group"].isin(["HER2_high", "HER2_low"])
     ].copy()
@@ -481,7 +492,7 @@ def crear_boxplot_dinaciclib(
     figura.tight_layout(rect=[0, 0, 1, 0.91])
     guardar_figura(
         figura,
-        "figura_04_boxplot_Dinaciclib_ERBB2_FINAL",
+        "figura_07_boxplot_Dinaciclib_ERBB2",
     )
 
     print(
@@ -501,6 +512,7 @@ def main() -> None:
     comprobar_archivo(ARCHIVO_MANNWHITNEY)
 
     datos = pd.read_csv(ARCHIVO_MAESTRO, low_memory=False)
+    validar_dataset_maestro(datos)
     datos["ERBB2_expr"] = pd.to_numeric(datos["ERBB2_expr"], errors="coerce")
     datos["AUC"] = pd.to_numeric(datos["AUC"], errors="coerce")
     datos = datos.dropna(
