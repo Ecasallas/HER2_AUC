@@ -1,0 +1,8 @@
+Compuesto,Mecanismo de acción,n,Rho de Spearman,p-valor_Spearman,FDR_Spearman,n HER2-high,n HER2-low,Diferencia de medianas,p-valor_MannWhitney,FDR_MannWhitney
+ALPELISIB,Inhibidor de PI3K,15.0,-0.8107,0.0002,0.0692,,,,,
+CANERTINIB,Inhibidor pan-HER/EGFR,20.0,-0.7068,0.0005,0.0872,5.0,5.0,-0.1293,0.0159,0.3823
+DINACICLIB,Inhibidor de CDK,21.0,0.7779,0.0,0.0292,4.0,5.0,0.2272,0.0159,0.3823
+GEFITINIB,Inhibidor de EGFR,18.0,-0.5583,0.016,0.2442,5.0,4.0,-0.2436,0.0159,0.3823
+LAPATINIB,Inhibidor HER2/EGFR,18.0,-0.7069,0.001,0.0972,,,,,
+POZIOTINIB,Inhibidor pan-HER,13.0,-0.8132,0.0007,0.0913,3.0,3.0,-0.5866,0.1,0.4245
+TUCATINIB,Inhibidor selectivo de HER2,21.0,-0.6597,0.0011,0.0972,5.0,5.0,-0.2154,0.0952,0.4245
